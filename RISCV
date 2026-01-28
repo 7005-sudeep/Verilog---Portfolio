@@ -5,16 +5,16 @@ module RISCV_Top(input clk, reset);
     reg [100:0] EX_MEM; 
     reg [70:0] MEM_WB;  
 
-    // 2. DECLARE MISSING WIRES (This fixes your "Unable to bind" errors)
+    // 
     wire [31:0] pc;
     wire [31:0] instr;
     wire [31:0] data1, data2;
     wire [4:0]  rs1, rs2, rd;
-    wire [10:0] ctrl; // Adjust width based on your control unit
+    wire [10:0] ctrl; // Adjust width here based on your control unit
     
     wire stall;
 
-    // ... Your module instantiations (Hazard_Unit, ALU, etc.) go here ...
+    // 
 
     // 3. Update Pipeline Registers
     always @(posedge clk) begin
