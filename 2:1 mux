@@ -1,0 +1,17 @@
+module mux2to1(
+input logic a;
+input logic b;
+input logic sel;
+output y 
+)
+
+alawys_comb begin
+if (sel)
+y=b;
+else 
+y=a;
+
+end
+endmodule 
+
+// assign y = sel ? b:a;
