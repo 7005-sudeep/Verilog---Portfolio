@@ -1,0 +1,202 @@
+// Code your design here
+///////Design Code
+ 
+module top(input clk,rst,din,output reg dout);
+  
+  enum bit [2:0]
+  {
+   idle = 3'b001,//1
+    s0 = 3'b010, //2
+    s1 = 3'b100 //4
+  }state = idle ,next_state = idle;
+  
+  ///reset decoding logic
+  always@(posedge clk)
+    begin
+      if(rst == 1'b1)
+         state <= idle;
+      else 
+         state <= next_state;
+    end
+  
+ //////output logic and next state decoding logic 
+  
+  always@(state,din)
+    begin
+      case(state)
+        idle: 
+          begin
+          dout = 1'b0;
+          next_state = s0;
+          end
+        
+        s0: begin
+          if(din == 1'b1)begin
+            next_state = s1;
+            dout = 0;
+          end
+          else begin  
+            next_state = s0;
+            dout = 0;
+          end
+        end
+          
+         s1:begin
+          if(din == 1'b1)begin
+            next_state = s0;
+            dout = 1'b1;
+          end
+          else begin  
+            next_state = s1;
+            dout = 0;
+          end  
+        end
+          
+        default:
+          begin  
+            next_state = idle;
+            dout = 0;
+          end 
+        
+      endcase
+    end
+ 
+        
+endmodule
+ 
+/////////////////////////////////////////////////
+
+
+
+
+TESTBENCH CODE 
+
+module tb;
+  reg clk = 0;
+  reg  din = 0;
+  reg rst = 0;
+  wire dout;
+  
+  top dut (clk,rst,din,dout);
+  
+  always #5 clk = ~clk;
+  
+  initial begin
+    #3;
+    rst = 1;
+    #30;
+    rst = 0;
+    din = 1;
+    #45;
+    din = 0;
+    #25;
+    rst = 1;
+    #40;
+    rst = 0;
+  end
+  
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars;
+    $assertvacuousoff(0);
+    #180;
+    $finish;    
+  end
+  
+ 
+  ////////// (1) State is one hot encoded
+  
+  state_encoding : assert property (@(posedge clk) 1'b1 |-> $onehot(dut.state));
+ 
+    
+    
+    
+    
+ 
+  ////////////// (2) Behavior on rst high
+  
+    state_rst_high:  assert property (@(posedge clk) rst |=> (dut.state == dut.idle));
+  
+  state_thr_rst_high:   assert property (@(posedge clk) $rose(rst) |=> (((dut.state == dut.idle)[*1:18]) within (rst[*1:18] ##1 !rst)));
+  
+  
+    
+    
+    
+    
+    
+    
+  
+/////////////////    (3) Behavior on rst low 
+     
+  sequence s1;
+    (dut.next_state == dut.idle) ##1 (dut.next_state == dut.s0);    
+  endsequence
+ 
+   sequence s2;
+     (dut.next_state == dut.s0) ##1 (dut.next_state == dut.s1);    
+  endsequence
+      
+      
+  sequence s3;
+    (dut.next_state == dut.s1) ##1 (dut.next_state == dut.s0);    
+  endsequence
+      
+    state_din_high: assert property (@(posedge clk) disable iff(rst) din |-> (s1 or s2 or s3));  
+      
+//////////////////////////////////////////////////////////////////////////////////////////////////      
+   sequence s4;
+     (dut.next_state == dut.idle) ##1 (dut.next_state == dut.s0);    
+  endsequence
+ 
+   sequence s5;
+     (dut.next_state == dut.s0) ##1 (dut.next_state == dut.s0);    
+  endsequence
+      
+      
+  sequence s6;
+    (dut.next_state == dut.s1) ##1 (dut.next_state == dut.s1);    
+  endsequence 
+      
+      
+      state_din_low: assert property (@(posedge clk) disable iff(rst) !din |-> (s4 or s5 or s6));    
+   //////////////////////////////////////////////////////////////////////////////////////////////
+        
+        
+    
+ property p1;
+   @(posedge clk)
+   if(din)
+     (s1 or s2 or s3)
+   else
+     (s4 or s5 or s6);
+ endproperty
+    
+      state_din: assert property (disable iff(rst) p1);
+      
+  /////////////////////////////////////////////////////////// 
+        
+        
+        
+  
+  ///////////////   (4) all states are cover
+ 
+  initial assert property (@(posedge clk) (dut.state == dut.idle)[->1] |-> ##[1:18] (dut.state == dut.s0) ##[1:18] (dut.state == dut.s1)); 
+  
+    
+    
+    
+    
+  
+  
+  
+    ////////////   (5)  Output check
+  
+    assert property (@(posedge clk) disable iff(rst) ((dut.next_state == dut.s0) && ($past(dut.next_state) == dut.s1)) |-> (dout == 1'b1) );
+  
+     
+      
+      
+      
+    
+endmodule
