@@ -50,3 +50,63 @@ module sync_fifo #(
                    (w_ptr[ADDR_W-1:0] == r_ptr[ADDR_W-1:0]);
 
 endmodule
+
+
+
+
+
+//Another method//
+
+module sync_fifo_status #(
+    parameter DEPTH = 16,
+    parameter DATA_W = 8
+)(
+    input  logic              clk,
+    input  logic              rst_n,
+    input  logic              w_en,
+    input  logic              r_en,
+    input  logic [DATA_W-1:0] w_data,
+    output logic [DATA_W-1:0] r_data,
+    output logic              full,
+    output logic              empty,
+    output logic              threshold_met // The "Half-Full" flag
+);
+
+    logic [DATA_W-1:0] mem [DEPTH];
+    logic [3:0] w_ptr, r_ptr; // 4 bits for 16 locations
+    logic [4:0] count;        // 5 bits to represent 0 to 16
+
+    // --- Counter Logic (The Brain of the Flags) ---
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            count <= 0;
+        end else begin
+            case ({w_en && !full, r_en && !empty})
+                2'b10: count <= count + 1; // Write only
+                2'b01: count <= count - 1; // Read only
+                default: count <= count;   // Both or None
+            endcase
+        end
+    end
+
+    // --- Pointer & Memory Logic ---
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) {w_ptr, r_ptr} <= 0;
+        else begin
+            if (w_en && !full)  begin 
+                mem[w_ptr] <= w_data; 
+                w_ptr <= w_ptr + 1; 
+            end
+            if (r_en && !empty) begin 
+                r_data <= mem[r_ptr]; 
+                r_ptr <= r_ptr + 1; 
+            end
+        end
+    end
+
+    // --- Flag Assignments ---
+    assign empty = (count == 0);
+    assign full  = (count == DEPTH);
+    assign threshold_met = (count >= 8);
+
+endmodule
