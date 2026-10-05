@@ -22,3 +22,12 @@ module sat_counter #(
     end
 
 endmodule
+
+
+/Condition 1:
+
+inc=1 AND dec=0 AND count≠max → count+1
+
+Condition 2:
+
+dec=1 AND inc=0 AND count≠0 → count-1/
